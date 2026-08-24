@@ -3,13 +3,20 @@ const express = require('express');
 const cors = require('cors');
 const { z } = require('zod');
 const { OpenAI } = require('openai');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 // Serve static files from the 'public' folder (for your frontend dashboard)
-app.use(express.static('public'));
+// Serve static files using absolute paths for Vercel
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Explicitly serve the dashboard on the root route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // ==========================================
 // 1. INITIALIZE GROQ VIA OPENAI SDK
