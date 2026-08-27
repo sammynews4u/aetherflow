@@ -4,27 +4,61 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-model IncomingWebhook {
-  id          String       @id @default(uuid())
-  receivedAt  DateTime     @default(now())
-  rawPayload  Json
-  source      String?      // e.g., "hubspot", "typeform"
-  status      String       @default("pending") // pending, failed, healed, processed
+model User {
+  id        String         @id @default(uuid())
+  email     String         @unique
+  name      String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   
-  healingLogs HealingLog[]
+  apiKeys   ApiKey[]
+  schemas   TargetSchema[]
+  logs      WebhookLog[]
 }
 
-model HealingLog {
-  id                String          @id @default(uuid())
-  webhookId         String
-  interceptedAt     DateTime        @default(now())
-  originalPayload   Json
-  healedPayload     Json?
-  aiConfidenceScore Float?
-  errorMessage      String?
+model ApiKey {
+  id        String    @id @default(uuid())
+  key       String    @unique // The actual x-aetherflow-api-key
+  name      String    // e.g., "Production Stripe Key"
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime  @default(now())
+  lastUsed  DateTime?
+}
 
-  webhook           IncomingWebhook @relation(fields: [webhookId], references: [id])
+model TargetSchema {
+  id          String       @id @default(uuid())
+  name        String       // e.g., "Customer Signup Webhook"
+  schemaDef   String       // The strict rules or JSON map for the AI
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime     @default(now())
+  logs        WebhookLog[]
+}
+
+model WebhookLog {
+  id              String        @id @default(uuid())
+  status          WebhookStatus 
+  originalPayload Json          // What Stripe/GitHub originally sent
+  healedPayload   Json?         // What the Groq AI generated
+  errorMessage    String?
+  computeTimeMs   Int           // To track latency
+
+  schemaId        String?
+  targetSchema    TargetSchema? @relation(fields: [schemaId], references: [id], onDelete: SetNull)
+  
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime      @default(now())
+}
+
+enum WebhookStatus {
+  SUCCESS_NATIVE  // Passed strict Zod validation natively
+  SUCCESS_HEALED  // Drift detected, AI patched it successfully
+  FAILED          // AI failed to heal, unrecoverable
 }
