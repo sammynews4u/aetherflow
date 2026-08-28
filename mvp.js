@@ -62,6 +62,18 @@ async function invokeAIHealer(brokenPayload, dynamicSchemaString) {
 }
 
 // ==========================================
+// 2.5 HEALTH CHECK (ROOT ROUTE)
+// ==========================================
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'AetherFlow Gateway',
+    status: 'online',
+    database: 'Connected to Supabase PostgreSQL',
+    version: '1.0.0'
+  });
+});
+
+// ==========================================
 // 3. AUTHENTICATION ROUTES
 // ==========================================
 app.post('/api/v1/auth/register', async (req, res) => {
